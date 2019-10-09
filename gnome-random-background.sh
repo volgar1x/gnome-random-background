@@ -1,5 +1,15 @@
 #!/bin/sh
 
+set -x
+
+if [ "$(uname)" = "Darwin" ]; then
+  readlink=`which greadlink`
+else
+  readlink=`which readlink`
+fi
+
+basedir=`dirname $($readlink -f $0)`
+
 if ! which curl >/dev/null 2>&1; then
   echo "please install curl: sudo apt install curl"
   exit 1
@@ -13,10 +23,22 @@ if ! which gsettings >/dev/null 2>&1; then
   exit 1
 fi
 
-access_token=c63d8392be08d106366f8f9d5816bf221cf51e775cf761a10aea0dcf9da437dd
-api_url=https://api.unsplash.com/photos/random
+. $basedir/env.sh
 
-background_url=$(curl -s $api_url -H "Authorization: Client-ID $access_token" | jq -r .urls.raw)
+today=`date +%Y/%m/%d`
+now=`date +%H:%M:%S`
+dest_file=$dest_dir/$today/$now.jpg
 
-gsettings set org.gnome.desktop.background picture-uri "$background_url"
+if [ ! -d "$dest_dir/$today" ]; then
+  mkdir -p "$dest_dir/$today"
+fi
+
+background_url=$(curl -s "$api_url" -H "Authorization: Client-ID $access_token" | jq -r .urls.raw)
+if [ -z "$background_url" ]; then
+  echo "cannot download wallpaper"
+  exit 1
+fi
+curl -s "$background_url" -o "$dest_file"
+
+gsettings set org.gnome.desktop.background picture-uri "$dest_file"
 
