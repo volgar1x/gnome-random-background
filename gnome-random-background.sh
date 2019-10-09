@@ -33,12 +33,17 @@ if [ ! -d "$dest_dir/$today" ]; then
   mkdir -p "$dest_dir/$today"
 fi
 
-background_url=$(curl -s "$api_url" -H "Authorization: Client-ID $access_token" | jq -r .urls.raw)
+curl -s "$api_url" -H "Authorization: Client-ID $access_token" -o "$basedir/last_resp.json"
+background_url=`jq -r .urls.raw < "$basedir/last_resp.json"`
 if [ -z "$background_url" ]; then
   echo "cannot download wallpaper"
   exit 1
 fi
 curl -s "$background_url" -o "$dest_file"
 
-gsettings set org.gnome.desktop.background picture-uri "$dest_file"
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+  export DBUS_SESSION_BUS_ADDRESS=`grep -z DBUS_SESSION_BUS_ADDRESS /proc/$(pgrep gnome-session)/environ | cut -d= -f2-`
+fi
+
+gsettings set org.gnome.desktop.background picture-uri "file://$dest_file"
 
